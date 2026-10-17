@@ -3,23 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InventoryManage.com - Cloud ERP & Bill Vault</title>
+    <title>InventoryManage.com - Cloud ERP & Bill Photo Vault</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Excel / CSV Parsing & Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Firebase App (compat for easy single-file integration) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <style>
         :root {
-            --primary: #1e40af; --primary-light: #2563eb; --primary-soft: #eff6ff;
-            --secondary: #0f172a; --accent: #facc15; --bg-body: #f1f5f9; --bg-card: #ffffff;
-            --text-main: #0f172a; --text-muted: #475569; --border-color: #cbd5e1;
-            --grid-border: #1e293b; --success: #16a34a; --danger: #dc2626; --warning: #f59e0b;
+            --primary: #1e40af;
+            --primary-light: #2563eb;
+            --primary-soft: #eff6ff;
+            --secondary: #0f172a;
+            --accent: #facc15;
+            --accent-dark: #ca8a04;
+            --bg-body: #f1f5f9;
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --border-color: #cbd5e1;
+            --grid-border: #1e293b;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --warning: #f59e0b;
             --sidebar-width: 265px;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background-color: var(--bg-body); color: var(--text-main); height: 100vh; overflow: hidden; }
+
+        /* Login Screen */
         #loginScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at top left, #1e3a8a, #0f172a 70%);
@@ -27,321 +41,1773 @@
         }
         .login-box {
             background: #ffffff; padding: 36px 34px; border-radius: 16px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); width: 100%; max-width: 420px; text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            width: 100%; max-width: 420px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.15);
         }
         .login-logo {
             width: 60px; height: 60px; background: var(--primary-soft); color: var(--primary);
             border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;
-            font-size: 1.7rem; margin-bottom: 14px;
+            font-size: 1.7rem; margin-bottom: 14px; box-shadow: 0 4px 10px rgba(37,99,235,0.15);
         }
         .login-box h2 { color: var(--secondary); margin-bottom: 4px; font-size: 1.45rem; font-weight: 800; }
         .login-box p.sub { color: var(--text-muted); font-size: 0.82rem; margin-bottom: 20px; }
         .login-box .form-group { margin-bottom: 16px; text-align: left; }
-        .login-box .form-group label { font-size: 0.78rem; font-weight: 700; color: var(--secondary); display: block; margin-bottom: 5px; text-transform: uppercase; }
-        .login-box .form-control { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; outline: none; }
-        .login-box button { width: 100%; padding: 12px; background: var(--primary-light); color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
-        .login-box button:hover { background: var(--primary); }
+        .login-box .form-group label { font-size: 0.78rem; font-weight: 700; color: var(--secondary); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .login-box .form-control { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; outline: none; transition: 0.2s; }
+        .login-box .form-control:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+        .login-box button { width: 100%; padding: 12px; background: var(--primary-light); color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem; transition: 0.2s; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .login-box button:hover { background: var(--primary); transform: translateY(-1px); }
         .error-msg { color: var(--danger); font-size: 0.83rem; margin-top: 10px; display: none; font-weight: 600; }
+        .forgot-link { margin-top: 14px; font-size: 0.82rem; color: var(--primary-light); cursor: pointer; font-weight: 600; display: inline-block; }
+        .forgot-link:hover { text-decoration: underline; }
+
+        /* Main App Container */
         #appContainer { display: none; height: 100vh; width: 100vw; display: flex; }
-        .sidebar { width: var(--sidebar-width); background: var(--secondary); color: #fff; display: flex; flex-direction: column; z-index: 100; flex-shrink: 0; }
+        
+        /* Sidebar */
+        .sidebar { width: var(--sidebar-width); background: var(--secondary); color: #fff; display: flex; flex-direction: column; z-index: 100; box-shadow: 4px 0 15px rgba(0,0,0,0.08); flex-shrink: 0; }
         .sidebar-brand { padding: 20px; font-size: 1.15rem; font-weight: 800; background: rgba(255,255,255,0.04); display: flex; align-items: center; gap: 12px; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .sidebar-brand i { color: var(--accent); font-size: 1.3rem; }
         .sidebar-menu { list-style: none; padding: 14px 12px; flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
-        .sidebar-menu li { padding: 12px 16px; display: flex; align-items: center; gap: 13px; cursor: pointer; font-size: 0.9rem; font-weight: 600; border-radius: 10px; color: #cbd5e1; }
+        .sidebar-menu li { padding: 12px 16px; display: flex; align-items: center; gap: 13px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; font-weight: 600; border-radius: 10px; color: #cbd5e1; }
         .sidebar-menu li:hover { background: rgba(255,255,255,0.08); color: #fff; }
-        .sidebar-menu li.active { background: var(--primary-light); color: #fff; }
+        .sidebar-menu li.active { background: var(--primary-light); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.35); }
+        .sidebar-menu li i { width: 20px; text-align: center; font-size: 1rem; }
         .sidebar-footer { padding: 14px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.75rem; color: #94a3b8; text-align: center; }
+
+        /* Main Content */
         .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .header { background: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
-        .header h1 { font-size: 1.3rem; color: var(--secondary); font-weight: 800; }
+        .header { background: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.03); flex-shrink: 0; }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .header h1 { font-size: 1.3rem; color: var(--secondary); font-weight: 800; letter-spacing: -0.3px; }
         .badge-live { background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px; }
         .user-info { display: flex; align-items: center; gap: 14px; font-weight: 600; color: var(--secondary); font-size: 0.9rem; }
-        .logout-btn { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+        .logout-btn { background: #fee2e2; color: var(--danger); border: 1px solid #fecaca; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 700; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .logout-btn:hover { background: var(--danger); color: #fff; }
+
         .content-body { padding: 22px 28px; overflow-y: auto; flex-grow: 1; }
         .tab-pane { display: none; }
-        .tab-pane.active { display: block; }
+        .tab-pane.active { display: block; animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* KPI Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 22px; }
+        .stat-card { background: var(--bg-card); padding: 20px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 16px; border: 1px solid #e2e8f0; border-left: 5px solid var(--primary-light); cursor: pointer; transition: 0.2s; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+        .stat-card .icon-wrap { width: 52px; height: 52px; border-radius: 12px; background: var(--primary-soft); color: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+        .stat-card h3 { font-size: 1.55rem; color: var(--secondary); font-weight: 800; line-height: 1.1; margin-bottom: 3px; }
+        .stat-card p { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+
+        /* Cards */
         .card { background: var(--bg-card); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; padding: 22px; margin-bottom: 20px; }
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 12px; }
         .card-header h2 { font-size: 1.1rem; color: var(--secondary); font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .card-header h2 i { color: var(--primary-light); }
+
+        /* Forms & Controls */
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group label { font-size: 0.78rem; font-weight: 700; color: #334155; text-transform: uppercase; }
-        .form-control { padding: 10px 12px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: #fff; color: var(--secondary); font-weight: 500; }
-        .btn { padding: 9px 16px; background: var(--primary-light); color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-size: 0.85rem; }
-        .btn:hover { background: var(--primary); }
-        .btn-excel { background: #15803d; color: #fff; }
+        .form-group label { font-size: 0.78rem; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.3px; }
+        .form-control { padding: 10px 12px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; outline: none; transition: 0.2s; background: #fff; color: var(--secondary); font-weight: 500; }
+        .form-control:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+        /* Buttons */
+        .btn { padding: 9px 16px; background: var(--primary-light); color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; font-size: 0.85rem; transition: 0.2s; }
+        .btn:hover { background: var(--primary); transform: translateY(-1px); }
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-warning { background: var(--warning); color: #1e293b; }
+        .btn-warning:hover { background: #d97706; color: #fff; }
+        .btn-excel { background: #15803d; color: #fff; box-shadow: 0 3px 8px rgba(21,128,61,0.25); }
+        .btn-excel:hover { background: #166534; }
+        .btn-outline { background: #fff; color: var(--secondary); border: 1.5px solid var(--border-color); }
+        .btn-outline:hover { background: #f8fafc; border-color: #94a3b8; }
+        .btn-sm { padding: 5px 10px; font-size: 0.75rem; border-radius: 6px; }
+
+        /* Bill Photo Upload Thumbnail */
+        .bill-thumb {
+            width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; transition: 0.2s;
+        }
+        .bill-thumb:hover { transform: scale(1.12); border-color: var(--primary-light); }
+
+        /* Bulk Upload Drop Zone */
+        .upload-dropzone {
+            border: 2px dashed #93c5fd;
+            background: #eff6ff;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-bottom: 16px;
+        }
+        .upload-dropzone:hover { border-color: var(--primary-light); background: #dbeafe; }
+        .upload-dropzone i { font-size: 2.2rem; color: var(--primary-light); margin-bottom: 8px; }
+
+        /* Multi-Select Item Picker & Selected Chips */
+        .report-controls-grid {
+            display: grid;
+            grid-template-columns: 310px 1fr;
+            gap: 18px;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 992px) {
+            .report-controls-grid { grid-template-columns: 1fr; }
+        }
+        .date-mode-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .date-input-highlight {
+            background: #fefce8 !important;
+            border: 2px solid #1e3a8a !important;
+            color: #1d4ed8 !important;
+            font-weight: 800 !important;
+            font-size: 1rem !important;
+            text-align: center;
+        }
+        .picker-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .picker-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .selected-count-badge {
+            background: var(--primary-soft);
+            color: var(--primary);
+            border: 1px solid #bfdbfe;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+        .selected-chips-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-height: 80px;
+            overflow-y: auto;
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px dashed #cbd5e1;
+            min-height: 38px;
+            align-items: center;
+        }
+        .item-chip {
+            background: #1e40af;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .item-chip i {
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: #fde047;
+        }
+        .item-chip i:hover { color: #fff; }
+        .item-picker-box {
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            height: 165px;
+            overflow-y: auto;
+            background: #fff;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 4px 10px;
+            align-content: start;
+        }
+        .item-picker-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 6px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: 0.15s;
+            user-select: none;
+        }
+        .item-picker-item:hover { background: #eff6ff; }
+        .item-picker-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--primary-light);
+        }
+        .item-picker-item.checked-row {
+            background: #dbeafe;
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+
+        /* Professional Excel-Style Report Table */
+        .table-responsive {
+            width: 100%;
+            overflow: auto;
+            max-height: 520px;
+            border: 2px solid var(--grid-border);
+            border-radius: 6px;
+            background: #fff;
+        }
+        table.report-grid {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        table.report-grid th, table.report-grid td {
+            padding: 9px 12px;
+            border: 1px solid #334155;
+            text-align: left;
+        }
+        table.report-grid thead th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #1e40af;
+            color: #ffffff;
+            font-weight: 700;
+            text-align: center;
+            border: 1px solid #0f172a;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table.report-grid thead th.yellow-hdr {
+            background: #ffeb3b !important;
+            color: #000000 !important;
+            font-weight: 800;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+        td.merged-item-cell {
+            background: #ffffff !important;
+            color: #0f172a;
+            font-weight: 800;
+            font-size: 0.9rem;
+            vertical-align: middle !important;
+            text-align: left !important;
+            border-left: 2px solid #0f172a !important;
+            border-right: 2px solid #0f172a !important;
+            border-top: 2px solid #0f172a !important;
+            border-bottom: 2px solid #0f172a !important;
+            box-shadow: inset 4px 0 0 var(--primary-light);
+        }
+        td.merged-sno-cell {
+            background: #f8fafc !important;
+            color: #1e293b;
+            font-weight: 800;
+            vertical-align: middle !important;
+            text-align: center !important;
+            border-top: 2px solid #0f172a !important;
+            border-bottom: 2px solid #0f172a !important;
+        }
+        tr.item-group-start td { border-top: 2px solid #0f172a !important; }
+        tr.item-group-end td { border-bottom: 2px solid #0f172a !important; }
+        td.vendor-cell { font-weight: 600; color: #1e293b; background: #fefce8; }
+        td.qty-cell { text-align: right !important; font-weight: 700; color: #0f172a; }
+        td.qty-cell.has-val { background: #f0fdf4; color: #15803d; }
+        td.rate-cell { text-align: right !important; font-weight: 700; color: #1e40af; }
+        td.rate-cell.has-val { background: #eff6ff; }
+
+        /* Standard Data Tables */
         table.std-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; white-space: nowrap; }
         table.std-table th, table.std-table td { padding: 10px 12px; border: 1px solid #e2e8f0; text-align: left; }
-        table.std-table thead th { background: #1e293b; color: #fff; position: sticky; top: 0; z-index: 15; }
+        table.std-table thead th { background: #1e293b; color: #fff; position: sticky; top: 0; z-index: 15; font-weight: 700; }
         table.std-table tbody tr:nth-child(even) { background: #f8fafc; }
+        table.std-table tbody tr:hover { background: #eff6ff; }
+
+        /* Modal popup */
+        .modal { display: none; position: fixed; z-index: 2500; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.65); backdrop-filter: blur(3px); justify-content: center; align-items: center; }
+        .modal-content { background: #fff; padding: 26px; border-radius: 14px; width: 94%; max-width: 1100px; max-height: 88vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4); }
+        .close-modal { font-size: 1.6rem; cursor: pointer; color: #64748b; background: #f1f5f9; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .close-modal:hover { background: var(--danger); color: #fff; }
     </style>
 </head>
 <body>
+
+    <!-- 🔐 LOGIN SCREEN WITH OTP FORGOT PASSWORD -->
     <div id="loginScreen">
-        <div class="login-box">
+        <div class="login-box" id="loginCard">
             <div class="login-logo"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-            <h2>Inventory Cloud ERP</h2>
-            <p class="sub">Login with Admin Credentials</p>
+            <h2>Cloud Inventory ERP</h2>
+            <p class="sub">Cloud Sync & Bill Photo Vault</p>
             <form onsubmit="handleLogin(event)">
-                <div class="form-group"><label>Username</label><input type="text" id="loginUser" class="form-control" value="admin" required></div>
-                <div class="form-group"><label>Password</label><input type="password" id="loginPass" class="form-control" value="admin123" required></div>
-                <button type="submit">Login to Dashboard</button>
-                <div id="errorMsg" class="error-msg">अमान्य यूज़रनेम या पासवर्ड! (Use admin / admin123)</div>
+                <div class="form-group">
+                    <label>Username / Admin ID</label>
+                    <input type="text" id="loginUser" class="form-control" value="admin" required>
+                </div>
+                <div class="form-group">
+                    <label>Password (पासवर्ड)</label>
+                    <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit"><i class="fa-solid fa-right-to-bracket"></i> Login to Cloud ERP</button>
+                <div id="errorMsg" class="error-msg"><i class="fa-solid fa-triangle-exclamation"></i> गलत यूज़रनेम या पासवर्ड!</div>
             </form>
+            <span class="forgot-link" onclick="openForgotModal()"><i class="fa-solid fa-key"></i> पासवर्ड भूल गए? (OTP Recovery)</span>
         </div>
     </div>
-    <div id="appContainer">
-        <div class="sidebar">
-            <div class="sidebar-brand"><i class="fa-solid fa-cloud"></i><div><div>InventoryCloud</div><div style="font-size:0.68rem; color:#94a3b8;">ERP System</div></div></div>
-            <ul class="sidebar-menu">
-                <li class="active" onclick="switchTab('dashboard', this)"><i class="fa-solid fa-chart-pie"></i> Dashboard</li>
-                <li onclick="switchTab('recent', this)"><i class="fa-solid fa-clock-rotate-left"></i> Recent Received</li>
-                <li onclick="switchTab('receiving', this)"><i class="fa-solid fa-truck-ramp-box"></i> Item Receiving</li>
-                <li onclick="switchTab('vendor', this)"><i class="fa-solid fa-handshake"></i> Vendor Quantity Details</li>
-                <li onclick="switchTab('frequency', this)"><i class="fa-solid fa-boxes-packing"></i> Item-wise Stats</li>
-                <li onclick="switchTab('master', this)"><i class="fa-solid fa-database"></i> Item Master</li>
-            </ul>
-            <div class="sidebar-footer">Sachchidanand (Admin)</div>
+
+    <!-- 📱 OTP FORGOT PASSWORD MODAL -->
+    <div id="forgotModal" class="modal" style="z-index: 4000;">
+        <div class="modal-content" style="max-width: 440px; height: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h3 style="color:var(--secondary); font-weight:800;"><i class="fa-solid fa-mobile-screen-button"></i> Mobile OTP Recovery</h3>
+                <span class="close-modal" onclick="closeForgotModal()">&times;</span>
+            </div>
+            <div id="otpStep1">
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
+                    अपना रजिस्टर्ड मोबाइल नंबर दर्ज करें। आपके नंबर पर 6 अंकों का OTP भेजा जाएगा।
+                </p>
+                <div class="form-group">
+                    <label>Registered Mobile No.</label>
+                    <input type="text" id="recoveryMobile" class="form-control" placeholder="उदा. 9876543210" value="9876543210">
+                </div>
+                <button class="btn" style="width:100%; justify-content:center; padding:11px;" onclick="sendOtpCode()">Send OTP</button>
+            </div>
+            <div id="otpStep2" style="display:none;">
+                <p style="font-size:0.85rem; color:var(--success); margin-bottom:16px; font-weight:600;">
+                    ✓ OTP भेजा गया है (Demo OTP: <b id="displayOtpCode" style="color:var(--danger); font-size:1.1rem;">123456</b>)
+                </p>
+                <div class="form-group">
+                    <label>Enter 6-Digit OTP</label>
+                    <input type="text" id="enteredOtp" class="form-control" placeholder="123456" maxlength="6">
+                </div>
+                <button class="btn btn-success" style="width:100%; justify-content:center; padding:11px;" onclick="verifyOtpCode()">Verify OTP</button>
+            </div>
+            <div id="otpStep3" style="display:none;">
+                <p style="font-size:0.85rem; color:var(--success); margin-bottom:16px; font-weight:600;">
+                    ✓ OTP सत्यापित हो गया! अब अपना नया पासवर्ड सेट करें।
+                </p>
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newSetPass" class="form-control" placeholder="नया पासवर्ड">
+                </div>
+                <button class="btn btn-success" style="width:100%; justify-content:center; padding:11px;" onclick="saveNewPassword()">Save & Login</button>
+            </div>
         </div>
+    </div>
+
+    <!-- 🖼️ BILL PHOTO PREVIEW MODAL -->
+    <div id="billViewerModal" class="modal" style="z-index: 5000;">
+        <div class="modal-content" style="max-width: 650px; text-align:center;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 id="billViewerTitle" style="color:var(--secondary); font-weight:800;"><i class="fa-solid fa-receipt"></i> Bill / Invoice Photo</h3>
+                <span class="close-modal" onclick="closeBillViewer()">&times;</span>
+            </div>
+            <div style="background:#0f172a; padding:10px; border-radius:10px; display:flex; justify-content:center; align-items:center; max-height:70vh; overflow:auto;">
+                <img id="fullBillImage" src="" alt="Bill Photo" style="max-width:100%; max-height:65vh; border-radius:6px; object-fit:contain;">
+            </div>
+            <div style="margin-top:14px; display:flex; justify-content:center; gap:10px;">
+                <a id="downloadBillBtn" href="#" download="Bill_Photo.jpg" class="btn btn-excel" target="_blank"><i class="fa-solid fa-download"></i> Download Bill Photo</a>
+                <button class="btn btn-outline" onclick="closeBillViewer()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🖥️ MAIN APP CONTAINER -->
+    <div id="appContainer">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-cloud"></i>
+                <div>
+                    <div>InventoryCloud</div>
+                    <div style="font-size:0.68rem; color:#94a3b8; font-weight:500;">Cloud ERP & Bill Vault</div>
+                </div>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active" id="nav-dashboard" onclick="switchTab('dashboard', this)">
+                    <i class="fa-solid fa-chart-pie"></i> Dashboard Overview
+                </li>
+                <li id="nav-receiving" onclick="switchTab('receiving', this)">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Item Receiving Entry
+                </li>
+                <li id="nav-dateReport" onclick="switchTab('dateReport', this)">
+                    <i class="fa-solid fa-calendar-check"></i> Receiving Report
+                </li>
+                <li id="nav-rateReport" onclick="switchTab('rateReport', this)">
+                    <i class="fa-solid fa-indian-rupee-sign"></i> Rate Fluctuation Report
+                </li>
+                <li id="nav-itemAdd" onclick="switchTab('itemAdd', this)">
+                    <i class="fa-solid fa-box-open"></i> Item Master
+                </li>
+                <li id="nav-adminUsers" onclick="switchTab('adminUsers', this)">
+                    <i class="fa-solid fa-user-shield"></i> Admin & User Manager
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <i class="fa-solid fa-cloud-arrow-up" style="color:var(--success);"></i> Cloud Sync: Active
+            </div>
+        </div>
+
+        <!-- Main Area -->
         <div class="main-content">
             <div class="header">
-                <div class="header-left"><h1 id="pageTitle">Dashboard</h1><span class="badge-live">Firebase Connected</span></div>
-                <div class="user-info"><span>Sachchidanand</span><button class="logout-btn" onclick="handleLogout()"><i class="fa-solid fa-power-off"></i> Logout</button></div>
+                <div class="header-left">
+                    <h1 id="pageTitle">Dashboard Overview</h1>
+                    <span class="badge-live" id="cloudStatusBadge"><i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> Cloud Connected</span>
+                </div>
+                <div class="user-info">
+                    <span><i class="fa-solid fa-user-check" style="color:var(--primary-light);"></i> Sachchidanand (Admin)</span>
+                    <button class="logout-btn" onclick="handleLogout()"><i class="fa-solid fa-power-off"></i> Logout</button>
+                </div>
             </div>
+
             <div class="content-body">
-                <div id="tab-dashboard" class="tab-pane active">
+                <!-- 1. DASHBOARD TAB -->
+                <div id="dashboard" class="tab-pane active">
+                    <div class="stats-grid">
+                        <div class="stat-card" onclick="showAllItemsModal()">
+                            <div class="icon-wrap"><i class="fa-solid fa-boxes-stacked"></i></div>
+                            <div>
+                                <h3 id="uiTotalItems">1,161</h3>
+                                <p>Total Master Items (Click to View / Edit / Excel)</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: var(--success);" onclick="showAllEntriesModal()">
+                            <div class="icon-wrap" style="background:#dcfce7; color:var(--success);"><i class="fa-solid fa-truck-fast"></i></div>
+                            <div>
+                                <h3 id="uiTotalEntries">2,136</h3>
+                                <p>Total Receiving Entries (Click to View / Edit / Excel)</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="border-left-color: var(--warning);" onclick="switchTab('dateReport', document.getElementById('nav-dateReport'))">
+                            <div class="icon-wrap" style="background:#fef9c3; color:#ca8a04;"><i class="fa-solid fa-table-columns"></i></div>
+                            <div>
+                                <h3>Receiving Report</h3>
+                                <p>Vendor-wise Merged & Quantity View</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
-                        <div class="card-header"><h2>Recent Inbound Receiving (Received Date, Invoice Date, Invoice No.)</h2><button class="btn btn-excel" onclick="exportReceivingExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button></div>
-                        <div class="table-responsive">
-                            <table class="std-table">
-                                <thead><tr><th>Received Date</th><th>Invoice Date</th><th>Invoice No.</th><th>Vendor</th><th>Item Name</th><th style="text-align:right;">Received Qty</th></tr></thead>
-                                <tbody id="dashTableBody"></tbody>
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-cloud-arrow-up" style="color:var(--success);"></i> Online Cloud Database & Bill Photo Vault Enabled</h2>
+                            <button class="btn btn-outline" onclick="syncWithCloud()"><i class="fa-solid fa-rotate"></i> Sync Cloud Data Now</button>
+                        </div>
+                        <p style="line-height:1.7; color:var(--text-muted); font-size:0.92rem;">
+                            • <b>Online Cloud Save:</b> आपका सारा डेटा अब ऑनलाइन क्लाउड पर सुरक्षित रूप से सिंक होता है। आप दुनिया के किसी भी मोबाइल या कंप्यूटर से लॉगिन करके अपना काम कर सकते हैं!
+                            <br>• <b>Bill / Invoice Photo Upload:</b> अब रिसीविंग एंट्री करते समय आप अपने **बिल या इनवॉइस की फोटो (Camera से खींचकर या Gallery से)** अपलोड कर सकते हैं। आप कभी भी किसी भी एंट्री का बिल क्लिक करके देख सकते हैं।
+                            <br>• <b>Bulk Excel Upload:</b> सैकड़ों-हजारों एंट्रीज़ एक सेकंड में अपलोड करें।
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 2. ITEM RECEIVING TAB (WITH BULK UPLOAD + BILL PHOTO) -->
+                <div id="receiving" class="tab-pane">
+                    <!-- Bulk Excel Upload Card -->
+                    <div class="card" style="border: 2px dashed #3b82f6; background: #f8fafc;">
+                        <div class="card-header" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
+                            <h2><i class="fa-solid fa-file-excel" style="color:#15803d;"></i> Bulk Excel / CSV Upload (एक साथ हज़ारों एंट्रीज़ जोड़ें)</h2>
+                            <button class="btn btn-outline btn-sm" onclick="downloadReceivingSampleExcel()"><i class="fa-solid fa-download"></i> Sample Template Download</button>
+                        </div>
+                        <p style="font-size:0.85rem; color:var(--text-muted); margin: 8px 0 14px 0;">
+                            अपनी रिसीविंग एक्सेल फाइल (.xlsx या .csv) यहाँ ड्रैग करें या अपलोड बटन पर क्लिक करें।
+                        </p>
+                        <div class="upload-dropzone" onclick="document.getElementById('excelFileInput').click()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <h4 style="color:var(--secondary); font-weight:700;">एक्सेल फाइल यहाँ अपलोड करने के लिए क्लिक करें</h4>
+                            <p style="font-size:0.8rem; color:#64748b; margin-top:4px;">Supports .xlsx, .xls, .csv</p>
+                            <input type="file" id="excelFileInput" style="display:none;" accept=".xlsx, .xls, .csv" onchange="handleExcelFileBulkUpload(event)">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 id="recvFormTitle"><i class="fa-solid fa-cart-flatbed"></i> सिंगल रिसीविंग एंट्री दर्ज करें + बिल फोटो अपलोड</h2>
+                            <button class="btn btn-excel" onclick="exportFullReceivingToExcel()"><i class="fa-solid fa-file-excel"></i> Download All Excel</button>
+                        </div>
+                        <form id="recvForm" onsubmit="saveReceiving(event)">
+                            <input type="hidden" id="editEntryId" value="">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Receiving Date *</label>
+                                    <input type="date" id="rDate" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Invoice Date</label>
+                                    <input type="text" id="rInvDate" class="form-control" placeholder="DD-MM-YYYY">
+                                </div>
+                                <div class="form-group">
+                                    <label>Invoice No. *</label>
+                                    <input type="text" id="rInv" class="form-control" placeholder="उदा. 5899" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Item Name *</label>
+                                    <select id="rItem" class="form-control" required><option value="">-- आइटम चुनें --</option></select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Quantity (मात्रा) *</label>
+                                    <input type="number" step="any" id="rQty" class="form-control" placeholder="उदा. 100" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Rate</label>
+                                    <input type="number" step="any" id="rRate" class="form-control" placeholder="उदा. 55.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Supplier / Vendor Name *</label>
+                                    <input type="text" id="rSupp" class="form-control" list="vendorSuggestions" placeholder="उदा. Sthree Enterprises" required>
+                                    <datalist id="vendorSuggestions"></datalist>
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fa-solid fa-camera"></i> Bill / Invoice Photo (बिल फोटो)</label>
+                                    <input type="file" id="rBillPhoto" class="form-control" accept="image/*" style="padding:7px; font-size:0.8rem;">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button type="submit" class="btn btn-success" id="recvSubmitBtn"><i class="fa-solid fa-cloud-arrow-up"></i> क्लाउड पर सेव करें</button>
+                                <button type="button" class="btn btn-outline" style="display:none;" id="cancelRecvEditBtn" onclick="cancelReceivingEdit()"><i class="fa-solid fa-xmark"></i> रद्द करें</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-list-check"></i> रिसीविंग एंट्रीज़ लिस्ट (बिल फोटो देखें व मैनेज करें)</h2>
+                            <input type="text" id="recvListSearch" class="form-control" style="width:260px;" placeholder="🔍 सर्च करें..." oninput="populateReceivingTable()">
+                        </div>
+                        <div class="table-responsive" style="border:1px solid #e2e8f0;">
+                            <table class="std-table" id="receivingTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:85px; text-align:center;">Bill Photo</th>
+                                        <th style="width:110px; text-align:center;">Action</th>
+                                        <th>S.No.</th>
+                                        <th>Receiving Date</th>
+                                        <th>Invoice No.</th>
+                                        <th>Item Name</th>
+                                        <th style="text-align:right;">Quantity</th>
+                                        <th style="text-align:right;">Rate</th>
+                                        <th>Supplier / Vendor Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recvTableBody"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                <div id="tab-recent" class="tab-pane">
+
+                <!-- 3. RECEIVING REPORT TAB -->
+                <div id="dateReport" class="tab-pane">
                     <div class="card">
-                        <div class="card-header"><h2>Recent Received Items Log</h2><button class="btn btn-excel" onclick="exportReceivingExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button></div>
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-calendar-check"></i> Receiving Report (Date-wise & Vendor-wise Merged View)</h2>
+                            <button class="btn btn-excel" onclick="exportReportToExcel('dwTable', 'Receiving_Report_DateWise.xlsx')"><i class="fa-solid fa-file-excel"></i> Excel Download</button>
+                        </div>
+
+                        <div class="report-controls-grid">
+                            <div class="date-mode-panel">
+                                <div class="form-group">
+                                    <label>From Date (कब से):</label>
+                                    <input type="date" id="dwFrom" class="form-control date-input-highlight" value="2026-04-01" onchange="renderDateReport()">
+                                </div>
+                                <div class="form-group">
+                                    <label>To Date (कब तक):</label>
+                                    <input type="date" id="dwTo" class="form-control date-input-highlight" value="2026-10-12" onchange="renderDateReport()">
+                                </div>
+                                <div class="form-group">
+                                    <label>Report View (मोड):</label>
+                                    <select id="dwMode" class="form-control" style="background:#1e40af; color:#fff; font-weight:700;" onchange="renderDateReport()">
+                                        <option value="With Vendor">With Vendor (वेंडर मर्ज व्यू)</option>
+                                        <option value="Without Vendor">Without Vendor (केवल टोटल)</option>
+                                    </select>
+                                </div>
+                                <button class="btn" style="width:100%; justify-content:center; padding:12px;" onclick="renderDateReport()">
+                                    <i class="fa-solid fa-bolt"></i> रिपोर्ट जनरेट करें
+                                </button>
+                            </div>
+
+                            <div class="picker-panel">
+                                <div class="picker-top-bar">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <label style="font-size:0.85rem; font-weight:800; color:var(--secondary);">
+                                            🔍 आइटम सर्च करके चुनें (50+ आइटम):
+                                        </label>
+                                        <span class="selected-count-badge" id="dwSelectedCountBadge">6 Selected</span>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="eraseAllSelectedItems('dw')">
+                                            <i class="fa-solid fa-eraser"></i> Erase All
+                                        </button>
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="selectDefaultSampleItems('dw')">
+                                            <i class="fa-solid fa-rotate"></i> डिफ़ॉल्ट 6
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="text" id="itemSearchBox" class="form-control" placeholder="आइटम सर्च करें (पुराने टिक सुरक्षित रहेंगे)..." oninput="renderDwItemPicker()">
+                                <div class="selected-chips-area" id="dwSelectedChipsArea"></div>
+                                <div class="item-picker-box" id="itemPickerContainer"></div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
-                            <table class="std-table">
-                                <thead><tr><th>Received Date</th><th>Invoice Date</th><th>Invoice No.</th><th>Vendor</th><th>Item Name</th><th style="text-align:right;">Received Qty</th></tr></thead>
-                                <tbody id="recentTableBody"></tbody>
+                            <table class="report-grid" id="dwTable">
+                                <thead></thead>
+                                <tbody></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                <div id="tab-receiving" class="tab-pane">
+
+                <!-- 4. RATE FLUCTUATION REPORT TAB -->
+                <div id="rateReport" class="tab-pane">
                     <div class="card">
-                        <div class="card-header"><h2>All Receiving Entries (2,136+ Records)</h2><button class="btn btn-excel" onclick="exportReceivingExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button></div>
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-indian-rupee-sign"></i> Rate Fluctuation Report</h2>
+                            <button class="btn btn-excel" onclick="exportReportToExcel('rrTable', 'Rate_Fluctuation_Report.xlsx')"><i class="fa-solid fa-file-excel"></i> Excel Download</button>
+                        </div>
+
+                        <div class="report-controls-grid">
+                            <div class="date-mode-panel">
+                                <div class="form-group">
+                                    <label>From Date:</label>
+                                    <input type="date" id="rrFrom" class="form-control date-input-highlight" value="2026-04-01" onchange="renderRateReport()">
+                                </div>
+                                <div class="form-group">
+                                    <label>To Date:</label>
+                                    <input type="date" id="rrTo" class="form-control date-input-highlight" value="2026-10-12" onchange="renderRateReport()">
+                                </div>
+                                <button class="btn" style="width:100%; justify-content:center; padding:12px;" onclick="renderRateReport()">
+                                    <i class="fa-solid fa-bolt"></i> रेट रिपोर्ट देखें
+                                </button>
+                            </div>
+
+                            <div class="picker-panel">
+                                <div class="picker-top-bar">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <label style="font-size:0.85rem; font-weight:800; color:var(--secondary);">
+                                            🔍 रेट रिपोर्ट के लिए आइटम चुनें:
+                                        </label>
+                                        <span class="selected-count-badge" id="rrSelectedCountBadge">6 Selected</span>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="eraseAllSelectedItems('rr')">
+                                            <i class="fa-solid fa-eraser"></i> Erase All
+                                        </button>
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="selectDefaultSampleItems('rr')">
+                                            <i class="fa-solid fa-rotate"></i> डिफ़ॉल्ट 6
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="text" id="rrItemSearchBox" class="form-control" placeholder="आइटम सर्च करें और टिक करें..." oninput="renderRrItemPicker()">
+                                <div class="selected-chips-area" id="rrSelectedChipsArea"></div>
+                                <div class="item-picker-box" id="rrItemPickerContainer"></div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
-                            <table class="std-table">
-                                <thead><tr><th>Received Date</th><th>Invoice Date</th><th>Invoice No.</th><th>Vendor</th><th>Item Name</th><th style="text-align:right;">Received Qty</th></tr></thead>
-                                <tbody id="receivingTableBody"></tbody>
+                            <table class="report-grid" id="rrTable">
+                                <thead></thead>
+                                <tbody></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                <div id="tab-vendor" class="tab-pane">
+
+                <!-- 5. ITEM MASTER TAB -->
+                <div id="itemAdd" class="tab-pane">
                     <div class="card">
-                        <div class="card-header"><h2>Vendor Quantity Details</h2><button class="btn btn-excel" onclick="exportVendorExcel()"><i class="fa-solid fa-file-excel"></i> Export Excel</button></div>
-                        <div class="table-responsive">
-                            <table class="std-table">
-                                <thead><tr><th>Vendor Name</th><th style="text-align:center;">Total Invoices</th><th style="text-align:right;">Total Quantity Supplied</th></tr></thead>
-                                <tbody id="vendorTableBody"></tbody>
+                        <div class="card-header">
+                            <h2 id="itemFormTitle"><i class="fa-solid fa-plus-circle"></i> नया आइटम मास्टर जोड़ें</h2>
+                            <button class="btn btn-excel" onclick="exportMasterItemsToExcel()"><i class="fa-solid fa-file-excel"></i> Download Master Excel</button>
+                        </div>
+                        <form onsubmit="saveMasterItem(event)" class="form-row">
+                            <input type="hidden" id="editItemOriginalName" value="">
+                            <div class="form-group">
+                                <label>Item Name *</label>
+                                <input type="text" id="mName" class="form-control" placeholder="उदा. RM_NEW ITEM" required>
+                            </div>
+                            <div class="form-group">
+                                <label>HSN / Code</label>
+                                <input type="text" id="mHsn" class="form-control" placeholder="उदा. 0401">
+                            </div>
+                            <div class="form-group">
+                                <label>UOM *</label>
+                                <input type="text" id="mUom" class="form-control" value="Kg" required>
+                            </div>
+                            <div style="display:flex; align-items:flex-end; gap:10px;">
+                                <button type="submit" class="btn btn-success" id="itemSubmitBtn"><i class="fa-solid fa-check"></i> सेव करें</button>
+                                <button type="button" class="btn btn-outline" style="display:none;" id="cancelItemEditBtn" onclick="cancelItemEdit()">रद्द करें</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-boxes-stacked"></i> मास्टर आइटम लिस्ट (Edit / Delete)</h2>
+                            <input type="text" id="masterListSearch" class="form-control" style="width:260px;" placeholder="🔍 सर्च करें..." oninput="populateMasterItemTable()">
+                        </div>
+                        <div class="table-responsive" style="border:1px solid #e2e8f0;">
+                            <table class="std-table" id="itemTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:110px; text-align:center;">Action</th>
+                                        <th style="width:70px;">S.No.</th>
+                                        <th>Item Name</th>
+                                        <th>HSN / Code</th>
+                                        <th>UOM</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemTableBody"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                <div id="tab-frequency" class="tab-pane">
+
+                <!-- 6. ADMIN & USER MANAGER TAB -->
+                <div id="adminUsers" class="tab-pane">
                     <div class="card">
-                        <div class="card-header"><h2>Item-wise Received Stats</h2></div>
-                        <div class="table-responsive">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-user-shield"></i> Main Admin Control (यूज़र व एडमिन जोड़ें / हटाएं)</h2>
+                        </div>
+                        <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:16px;">
+                            आप मुख्य एडमिन (Main Admin) हैं। आप यहाँ से नए यूज़र्स या सब-एडमिन बना सकते हैं।
+                        </p>
+                        <form onsubmit="saveNewSystemUser(event)" class="form-row">
+                            <div class="form-group">
+                                <label>Username / ID *</label>
+                                <input type="text" id="newSysUser" class="form-control" placeholder="उदा. manager_sanjay" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Password *</label>
+                                <input type="password" id="newSysPass" class="form-control" placeholder="पासवर्ड" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Role / Role Access</label>
+                                <select id="newSysRole" class="form-control">
+                                    <option value="Sub Admin">Sub Admin (एडमिन)</option>
+                                    <option value="Operator">Operator (केवल एंट्री)</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; align-items:flex-end;">
+                                <button type="submit" class="btn btn-success"><i class="fa-solid fa-user-plus"></i> यूज़र जोड़ें</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h2><i class="fa-solid fa-users"></i> रजिस्टर्ड सिस्टम यूज़र्स लिस्ट</h2></div>
+                        <div class="table-responsive" style="border:1px solid #e2e8f0;">
                             <table class="std-table">
-                                <thead><tr><th>Item Name</th><th style="text-align:center;">Times Received</th><th style="text-align:right;">Total Qty Received</th></tr></thead>
-                                <tbody id="frequencyTableBody"></tbody>
+                                <thead>
+                                    <tr>
+                                        <th style="width:90px; text-align:center;">Action</th>
+                                        <th>S.No.</th>
+                                        <th>Username</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="systemUsersTableBody"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-                <div id="tab-master" class="tab-pane">
-                    <div class="card">
-                        <div class="card-header"><h2>Item Master (1,161+ Items)</h2></div>
-                        <div class="table-responsive">
-                            <table class="std-table">
-                                <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Unit</th></tr></thead>
-                                <tbody id="masterTableBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
+
+    <!-- MODAL POPUP -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom:12px; border-bottom:1px solid #e2e8f0; flex-wrap:wrap; gap:10px;">
+                <h2 id="modalTitle" style="color:var(--secondary); font-size:1.25rem; font-weight:800;">Details</h2>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <input type="text" id="modalSearchInput" class="form-control" style="width:240px;" placeholder="🔍 सर्च करें..." oninput="filterModalTable()">
+                    <button class="btn btn-excel" id="modalExcelBtn"><i class="fa-solid fa-file-excel"></i> Excel Download</button>
+                    <span class="close-modal" onclick="closeModal()">&times;</span>
+                </div>
+            </div>
+            <div class="table-responsive" style="flex-grow:1; border:1px solid #e2e8f0;">
+                <table class="std-table" id="modalTable">
+                    <thead id="modalHead"></thead>
+                    <tbody id="modalBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
-        let receivingEntries = [];
-        let masterItems = [];
+        // FIREBASE CLOUD CONFIGURATION (Auto-fallback to LocalStorage if offline/not configured)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLpjcNf6oVqdO0eZmKWxVE6Slj50OZ5Hc",
+            authDomain: "myhome-c8343.firebaseapp.com",
+            projectId: "myhome-c8343",
+            storageBucket: "myhome-c8343.firebasestorage.app",
+            messagingSenderId: "181164343937",
+            appId: "1:181164343937:web:db086c315eff5183834380",
+            measurementId: "G-HFY09BJEQN"
+        };
 
-        function generateData() {
-            const categories = ["Raw Materials", "Packaging", "Finished Goods", "Chemicals"];
-            const units = ["Kg", "Pcs", "Litres", "Boxes"];
-            const vendors = ["Shree Balaji Traders", "Agro Foods Corp", "Apex Packaging Industries", "Khandelwal & Sons", "National Chemical Works"];
-
-            for (let i = 1; i <= 1161; i++) {
-                masterItems.push({
-                    code: `SKU-${1000 + i}`,
-                    name: `Master Item #${i} (${categories[i % categories.length]})`,
-                    category: categories[i % categories.length],
-                    unit: units[i % units.length]
-                });
+        let db = null;
+        let isCloudActive = false;
+        try {
+            if (typeof firebase !== 'undefined') {
+                const firebaseApp = firebase.apps && firebase.apps.length
+                    ? firebase.app()
+                    : firebase.initializeApp(firebaseConfig);
+                db = firebaseApp.firestore();
+                isCloudActive = true;
+                console.log("Firebase Cloud Firestore initialized successfully.");
             }
+        } catch(e) {
+            console.warn("Firebase init warning, running with LocalStorage sync fallback:", e);
+        }
 
-            const baseDate = new Date(2025, 0, 1);
-            for (let j = 1; j <= 2136; j++) {
-                let dRec = new Date(baseDate.getTime() + (j * 3.5 * 3600 * 1000));
-                let dInv = new Date(dRec.getTime() - (2 * 24 * 3600 * 1000));
+        // INITIAL DEFAULT DATA
+        const DEFAULT_MASTER_ITEMS = [{"name": "RM_SUPREME VANILLA", "hsn": "123", "uom": "Kg"}, {"name": "RM_MILK", "hsn": "O401", "uom": "Lttr"}, {"name": "RM_SUGAR", "hsn": "17011490", "uom": "Kg"}, {"name": "RM_WHEAT", "hsn": "O713", "uom": "Kg"}, {"name": "RM_CHANADAL NO1", "hsn": "07139010", "uom": "Kg"}];
+        const DEFAULT_RECEIVING_ENTRIES = [{"id": 1, "receivingDate": "2026-04-01", "invoiceDate": "01-04-2026", "invoiceNo": "5899", "itemName": "RM_MILK", "quantity": 10.0, "rate": 52.0, "supplierName": "Sthree Enterprises", "billPhoto": ""}, {"id": 2, "receivingDate": "2026-04-02", "invoiceDate": "02-04-2026", "invoiceNo": "333", "itemName": "RM_CHANADAL NO1", "quantity": 100.0, "rate": 68.0, "supplierName": "Sangam Traders", "billPhoto": ""}];
+        const DEFAULT_SYSTEM_USERS = [
+            { id: 1, username: 'admin', password: 'admin123', role: 'Main Admin', status: 'Active' },
+            { id: 2, username: 'sanjay_op', password: 'password123', role: 'Operator', status: 'Active' }
+        ];
+
+        let masterItems = JSON.parse(localStorage.getItem('inv_master_items_cloud_v1')) || JSON.parse(JSON.stringify(DEFAULT_MASTER_ITEMS));
+        let receivingEntries = JSON.parse(localStorage.getItem('inv_receiving_entries_cloud_v1')) || JSON.parse(JSON.stringify(DEFAULT_RECEIVING_ENTRIES));
+        let systemUsers = JSON.parse(localStorage.getItem('inv_system_users_cloud_v1')) || JSON.parse(JSON.stringify(DEFAULT_SYSTEM_USERS));
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem('inv_master_items_cloud_v1', JSON.stringify(masterItems));
+                localStorage.setItem('inv_receiving_entries_cloud_v1', JSON.stringify(receivingEntries));
+                localStorage.setItem('inv_system_users_cloud_v1', JSON.stringify(systemUsers));
                 
-                receivingEntries.push({
-                    receivedDate: dRec.toISOString().split('T')[0],
-                    invoiceDate: dInv.toISOString().split('T')[0],
-                    invoiceNo: `INV-2026-${(10000 + j).toString().slice(1)}`,
-                    vendor: vendors[j % vendors.length],
-                    itemName: masterItems[j % masterItems.length].name,
-                    qty: (10 + (j * 7) % 490)
+                // If Cloud DB is active, push to Firestore in background
+                if (isCloudActive && db) {
+                    db.collection("inventory_data").doc("main_store").set({
+                        masterItems: masterItems,
+                        receivingEntries: receivingEntries.slice(0, 1000), // Firestore doc limit safety
+                        systemUsers: systemUsers,
+                        updatedAt: new Date().toISOString()
+                    }).then(() => {
+                        document.getElementById('cloudStatusBadge').innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.5rem; color:#16a34a;"></i> Cloud Synced';
+                    }).catch(err => {
+                        console.warn("Cloud sync write error:", err);
+                    });
+                }
+            } catch(e) { console.warn('Storage limit reached', e); }
+        }
+
+        function syncWithCloud() {
+            if (isCloudActive && db) {
+                db.collection("inventory_data").doc("main_store").get().then((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (data.masterItems) masterItems = data.masterItems;
+                        if (data.receivingEntries) receivingEntries = data.receivingEntries;
+                        if (data.systemUsers) systemUsers = data.systemUsers;
+                        initAllViews();
+                        alert('✅ क्लाउड डेटाबेस से सफलतापूर्वक सिंक (Sync) हो गया है!');
+                    } else {
+                        alert('क्लाउड पर डेटा सेट किया जा रहा है...');
+                        saveToStorage();
+                    }
+                }).catch(err => {
+                    alert('⚠ क्लाउड सिंक में त्रुटि। लोकल डेटा उपयोग हो रहा है।');
                 });
+            } else {
+                alert('✓ लोकल स्टोरेज एक्टिव है।');
             }
         }
 
-        generateData();
+        const DEFAULT_SAMPLE_ITEMS = ['RM_MILK', 'RM_CHANADAL NO1', 'RM_SUGAR', 'RM_WHEAT'];
+        let dwSelectedSet = new Set(DEFAULT_SAMPLE_ITEMS);
+        let rrSelectedSet = new Set(DEFAULT_SAMPLE_ITEMS);
 
+        function updateKPIs() {
+            document.getElementById('uiTotalItems').innerText = masterItems.length.toLocaleString();
+            document.getElementById('uiTotalEntries').innerText = receivingEntries.length.toLocaleString();
+        }
+
+        function populateItemDropdowns() {
+            const rItemSelect = document.getElementById('rItem');
+            rItemSelect.innerHTML = '<option value="">-- आइटम चुनें --</option>';
+            masterItems.forEach(i => {
+                let opt = document.createElement('option');
+                opt.value = i.name;
+                opt.textContent = i.name + (i.uom ? ' ('+i.uom+')' : '');
+                rItemSelect.appendChild(opt);
+            });
+
+            const vDatalist = document.getElementById('vendorSuggestions');
+            vDatalist.innerHTML = '';
+            let uniqueVendors = new Set();
+            receivingEntries.forEach(e => { if(e.supplierName) uniqueVendors.add(e.supplierName); });
+            Array.from(uniqueVendors).sort().forEach(v => {
+                let opt = document.createElement('option');
+                opt.value = v;
+                vDatalist.appendChild(opt);
+            });
+        }
+
+        // BULK EXCEL UPLOAD
+        function handleExcelFileBulkUpload(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+                    if(jsonData.length === 0) {
+                        alert('⚠ फाइल खाली है!');
+                        return;
+                    }
+
+                    let addedCount = 0;
+                    let maxId = receivingEntries.length > 0 ? Math.max(...receivingEntries.map(x => x.id || 0)) : 0;
+
+                    jsonData.forEach(row => {
+                        let rDate = row['Receiving Date'] || row['प्राप्ति तिथि'] || row['Date'] || '';
+                        let invNo = row['Invoice No.'] || row['Invoice No'] || row['बिल नंबर'] || '0';
+                        let itemName = row['Item Name'] || row['आइटम का नाम'] || '';
+                        let qty = row['Quantity'] || row['मात्रा'] || 0;
+                        let rate = row['Rate'] || row['रेट'] || 0;
+                        let supp = row['Supplier Name'] || row['Supplier'] || 'Unknown Vendor';
+
+                        if(rDate && itemName && Number(qty) > 0) {
+                            let dateStr = String(rDate).trim();
+                            if(dateStr.includes('/')) {
+                                let p = dateStr.split('/');
+                                if(p.length === 3) dateStr = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+                            }
+                            maxId++;
+                            receivingEntries.unshift({
+                                id: maxId,
+                                receivingDate: dateStr.substring(0, 10),
+                                invoiceDate: dateStr.substring(0, 10),
+                                invoiceNo: String(invNo),
+                                itemName: String(itemName).trim(),
+                                quantity: parseFloat(qty) || 0,
+                                rate: parseFloat(rate) || 0,
+                                supplierName: String(supp).trim() || 'Unknown Vendor',
+                                billPhoto: ''
+                            });
+                            addedCount++;
+                        }
+                    });
+
+                    saveToStorage();
+                    initAllViews();
+                    alert(`✅ सफलतापर्वक ${addedCount} नई एंट्रीज़ क्लाउड पर अपलोड हो गई हैं!`);
+                } catch(err) {
+                    console.error(err);
+                    alert('❌ फाइल पढ़ने में त्रुटि हुई।');
+                }
+                e.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function downloadReceivingSampleExcel() {
+            const sampleData = [
+                ["Receiving Date", "Invoice Date", "Invoice No.", "Item Name", "Quantity", "Rate", "Supplier Name"],
+                ["2026-04-01", "01-04-2026", "5899", "RM_MILK", 100, 52, "Sthree Enterprises"],
+                ["2026-04-02", "02-04-2026", "333", "RM_CHANADAL NO1", 500, 68, "Sangam Traders"]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(sampleData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Receiving_Sample");
+            XLSX.writeFile(wb, "Receiving_Upload_Template.xlsx");
+        }
+
+        // BILL PHOTO VIEWER MODAL
+        function viewBillPhoto(base64Img, invNo, suppName) {
+            if(!base64Img) {
+                alert('⚠ इस एंट्री के साथ कोई बिल/इनवॉइस फोटो अपलोड नहीं की गई है।');
+                return;
+            }
+            document.getElementById('billViewerTitle').innerHTML = `<i class="fa-solid fa-receipt"></i> Bill Photo (Invoice: ${invNo} - ${suppName})`;
+            document.getElementById('fullBillImage').src = base64Img;
+            document.getElementById('downloadBillBtn.href') = base64Img;
+            document.getElementById('billViewerModal').style.display = 'flex';
+        }
+        function closeBillViewer() {
+            document.getElementById('billViewerModal').style.display = 'none';
+        }
+
+        // ITEM PICKERS
+        function renderDwItemPicker() {
+            const searchTxt = (document.getElementById('itemSearchBox').value || '').trim().toLowerCase();
+            const container = document.getElementById('itemPickerContainer');
+            container.innerHTML = '';
+
+            const filtered = masterItems.filter(i => i.name.toLowerCase().includes(searchTxt));
+            filtered.slice(0, 300).forEach(i => {
+                const isChecked = dwSelectedSet.has(i.name);
+                const lbl = document.createElement('label');
+                lbl.className = 'item-picker-item' + (isChecked ? ' checked-row' : '');
+                
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.checked = isChecked;
+                chk.onchange = function() {
+                    if(this.checked) dwSelectedSet.add(i.name);
+                    else dwSelectedSet.delete(i.name);
+                    renderDwChipsAndCount();
+                    renderDwItemPicker();
+                    renderDateReport();
+                };
+
+                const span = document.createElement('span');
+                span.textContent = i.name;
+
+                lbl.appendChild(chk);
+                lbl.appendChild(span);
+                container.appendChild(lbl);
+            });
+            renderDwChipsAndCount();
+        }
+
+        function renderDwChipsAndCount() {
+            document.getElementById('dwSelectedCountBadge').textContent = dwSelectedSet.size + ' आइटम चुने गए';
+            const chipsArea = document.getElementById('dwSelectedChipsArea');
+            if(dwSelectedSet.size === 0) {
+                chipsArea.innerHTML = '<span style="color:#94a3b8; font-size:0.8rem;">कोई आइटम नहीं चुना गया। नीचे लिस्ट से टिक करें...</span>';
+                return;
+            }
+            chipsArea.innerHTML = '';
+            dwSelectedSet.forEach(itemName => {
+                const chip = document.createElement('span');
+                chip.className = 'item-chip';
+                chip.innerHTML = `${itemName} <i class="fa-solid fa-circle-xmark"></i>`;
+                chip.querySelector('i').onclick = function() {
+                    dwSelectedSet.delete(itemName);
+                    renderDwItemPicker();
+                    renderDateReport();
+                };
+                chipsArea.appendChild(chip);
+            });
+        }
+
+        function renderRrItemPicker() {
+            const searchTxt = (document.getElementById('rrItemSearchBox').value || '').trim().toLowerCase();
+            const container = document.getElementById('rrItemPickerContainer');
+            container.innerHTML = '';
+
+            const filtered = masterItems.filter(i => i.name.toLowerCase().includes(searchTxt));
+            filtered.slice(0, 300).forEach(i => {
+                const isChecked = rrSelectedSet.has(i.name);
+                const lbl = document.createElement('label');
+                lbl.className = 'item-picker-item' + (isChecked ? ' checked-row' : '');
+                
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.checked = isChecked;
+                chk.onchange = function() {
+                    if(this.checked) rrSelectedSet.add(i.name);
+                    else rrSelectedSet.delete(i.name);
+                    renderRrChipsAndCount();
+                    renderRrItemPicker();
+                    renderRateReport();
+                };
+
+                const span = document.createElement('span');
+                span.textContent = i.name;
+
+                lbl.appendChild(chk);
+                lbl.appendChild(span);
+                container.appendChild(lbl);
+            });
+            renderRrChipsAndCount();
+        }
+
+        function renderRrChipsAndCount() {
+            document.getElementById('rrSelectedCountBadge').textContent = rrSelectedSet.size + ' आइटम चुने गए';
+            const chipsArea = document.getElementById('rrSelectedChipsArea');
+            if(rrSelectedSet.size === 0) {
+                chipsArea.innerHTML = '<span style="color:#94a3b8; font-size:0.8rem;">कोई आइटम नहीं चुना गया। नीचे लिस्ट से टिक करें...</span>';
+                return;
+            }
+            chipsArea.innerHTML = '';
+            rrSelectedSet.forEach(itemName => {
+                const chip = document.createElement('span');
+                chip.className = 'item-chip';
+                chip.innerHTML = `${itemName} <i class="fa-solid fa-circle-xmark"></i>`;
+                chip.querySelector('i').onclick = function() {
+                    rrSelectedSet.delete(itemName);
+                    renderRrItemPicker();
+                    renderRateReport();
+                };
+                chipsArea.appendChild(chip);
+            });
+        }
+
+        function eraseAllSelectedItems(type) {
+            if(type === 'dw') {
+                dwSelectedSet.clear();
+                document.getElementById('itemSearchBox').value = '';
+                renderDwItemPicker();
+                renderDateReport();
+            } else {
+                rrSelectedSet.clear();
+                document.getElementById('rrItemSearchBox').value = '';
+                renderRrItemPicker();
+                renderRateReport();
+            }
+        }
+
+        function selectDefaultSampleItems(type) {
+            if(type === 'dw') {
+                dwSelectedSet = new Set(DEFAULT_SAMPLE_ITEMS);
+                document.getElementById('itemSearchBox').value = '';
+                renderDwItemPicker();
+                renderDateReport();
+            } else {
+                rrSelectedSet = new Set(DEFAULT_SAMPLE_ITEMS);
+                document.getElementById('rrItemSearchBox').value = '';
+                renderRrItemPicker();
+                renderRateReport();
+            }
+        }
+
+        // RECEIVING REPORT
+        function renderDateReport() {
+            const fromD = document.getElementById('dwFrom').value;
+            const toD = document.getElementById('dwTo').value;
+            const mode = document.getElementById('dwMode').value;
+            const selectedItems = Array.from(dwSelectedSet);
+
+            const theadEl = document.querySelector('#dwTable thead');
+            const tbodyEl = document.querySelector('#dwTable tbody');
+
+            if(selectedItems.length === 0) {
+                theadEl.innerHTML = '<tr><th>सूचना</th></tr>';
+                tbodyEl.innerHTML = '<tr><td style="text-align:center; padding:30px; font-weight:600; color:#64748b;">कृपया कम से कम 1 आइटम टिक करें।</td></tr>';
+                return;
+            }
+
+            const rangeEntries = receivingEntries.filter(en =>
+                dwSelectedSet.has(en.itemName) &&
+                en.receivingDate >= fromD &&
+                en.receivingDate <= toD &&
+                en.quantity > 0
+            );
+
+            const activeDatesSet = new Set();
+            rangeEntries.forEach(en => activeDatesSet.add(en.receivingDate));
+            const activeDates = Array.from(activeDatesSet).sort();
+
+            let headHTML = '<tr><th style="width:55px;">S.No.</th><th class="yellow-hdr" style="min-width:220px;">Item Name</th>';
+            if(mode === 'With Vendor') {
+                headHTML += '<th class="yellow-hdr" style="min-width:230px;">Vendor / Supplier</th>';
+            }
+            activeDates.forEach(d => {
+                const p = d.split('-');
+                headHTML += `<th>${p[2]}.${p[1]}.${p[0]}</th>`;
+            });
+            headHTML += '</tr>';
+            theadEl.innerHTML = headHTML;
+
+            let bodyHTML = '';
+            let sNo = 1;
+
+            selectedItems.forEach(itemName => {
+                const itemRangeEntries = rangeEntries.filter(e => e.itemName === itemName);
+                const allItemEntries = receivingEntries.filter(e => e.itemName === itemName);
+
+                if(mode === 'Without Vendor') {
+                    const qtysByDate = {};
+                    itemRangeEntries.forEach(e => {
+                        qtysByDate[e.receivingDate] = (qtysByDate[e.receivingDate] || 0) + e.quantity;
+                    });
+                    bodyHTML += `<tr class="item-group-start item-group-end">`;
+                    bodyHTML += `<td class="merged-sno-cell">${sNo++}</td>`;
+                    bodyHTML += `<td class="merged-item-cell">${itemName}</td>`;
+                    activeDates.forEach(d => {
+                        const val = qtysByDate[d];
+                        bodyHTML += `<td class="qty-cell ${val ? 'has-val' : ''}">${val ? Number(val.toFixed(3)) : ''}</td>`;
+                    });
+                    bodyHTML += `</tr>`;
+                } else {
+                    const vendorSet = new Set();
+                    itemRangeEntries.forEach(e => { if(e.supplierName) vendorSet.add(e.supplierName); });
+                    if(vendorSet.size === 0) {
+                        allItemEntries.forEach(e => { if(e.supplierName) vendorSet.add(e.supplierName); });
+                    }
+                    const vendorList = vendorSet.size > 0 ? Array.from(vendorSet) : ['Unknown Vendor'];
+                    const spanCount = vendorList.length;
+
+                    vendorList.forEach((vendorName, vIdx) => {
+                        const vEntries = itemRangeEntries.filter(e => e.supplierName === vendorName);
+                        const qtysByDate = {};
+                        vEntries.forEach(e => {
+                            qtysByDate[e.receivingDate] = (qtysByDate[e.receivingDate] || 0) + e.quantity;
+                        });
+
+                        const rowClass = (vIdx === 0 ? 'item-group-start ' : '') + (vIdx === spanCount - 1 ? 'item-group-end' : '');
+                        bodyHTML += `<tr class="${rowClass.trim()}">`;
+                        if(vIdx === 0) {
+                            bodyHTML += `<td class="merged-sno-cell" rowspan="${spanCount}">${sNo++}</td>`;
+                            bodyHTML += `<td class="merged-item-cell" rowspan="${spanCount}">${itemName}</td>`;
+                        }
+                        bodyHTML += `<td class="vendor-cell">${vendorName}</td>`;
+                        activeDates.forEach(d => {
+                            const val = qtysByDate[d];
+                            bodyHTML += `<td class="qty-cell ${val ? 'has-val' : ''}">${val ? Number(val.toFixed(3)) : ''}</td>`;
+                        });
+                        bodyHTML += `</tr>`;
+                    });
+                }
+            });
+
+            tbodyEl.innerHTML = bodyHTML;
+        }
+
+        // RATE REPORT
+        function renderRateReport() {
+            const fromD = document.getElementById('rrFrom').value;
+            const toD = document.getElementById('rrTo').value;
+            const selectedItems = Array.from(rrSelectedSet);
+
+            const theadEl = document.querySelector('#rrTable thead');
+            const tbodyEl = document.querySelector('#rrTable tbody');
+
+            if(selectedItems.length === 0) {
+                theadEl.innerHTML = '<tr><th>सूचना</th></tr>';
+                tbodyEl.innerHTML = '<tr><td style="text-align:center; padding:30px; font-weight:600; color:#64748b;">कृपया कम से कम 1 आइटम टिक करें।</td></tr>';
+                return;
+            }
+
+            const rangeEntries = receivingEntries.filter(en =>
+                rrSelectedSet.has(en.itemName) &&
+                en.receivingDate >= fromD &&
+                en.receivingDate <= toD
+            );
+
+            const activeDatesSet = new Set();
+            rangeEntries.forEach(en => activeDatesSet.add(en.receivingDate));
+            const activeDates = Array.from(activeDatesSet).sort();
+
+            let headHTML = '<tr><th style="width:55px;">S.No.</th><th class="yellow-hdr" style="min-width:220px;">Item Name</th><th class="yellow-hdr" style="min-width:230px;">Vendor / Supplier</th>';
+            activeDates.forEach(d => {
+                const p = d.split('-');
+                headHTML += `<th>${p[2]}.${p[1]}.${p[0]}</th>`;
+            });
+            headHTML += '</tr>';
+            theadEl.innerHTML = headHTML;
+
+            let bodyHTML = '';
+            let sNo = 1;
+
+            selectedItems.forEach(itemName => {
+                const itemRangeEntries = rangeEntries.filter(e => e.itemName === itemName);
+                const allItemEntries = receivingEntries.filter(e => e.itemName === itemName);
+
+                const vendorSet = new Set();
+                itemRangeEntries.forEach(e => { if(e.supplierName) vendorSet.add(e.supplierName); });
+                if(vendorSet.size === 0) {
+                    allItemEntries.forEach(e => { if(e.supplierName) vendorSet.add(e.supplierName); });
+                }
+                const vendorList = vendorSet.size > 0 ? Array.from(vendorSet) : ['Unknown Vendor'];
+                const spanCount = vendorList.length;
+
+                vendorList.forEach((vendorName, vIdx) => {
+                    const vEntries = itemRangeEntries.filter(e => e.supplierName === vendorName && e.rate > 0);
+                    const ratesByDate = {};
+                    const countsByDate = {};
+                    vEntries.forEach(e => {
+                        ratesByDate[e.receivingDate] = (ratesByDate[e.receivingDate] || 0) + e.rate;
+                        countsByDate[e.receivingDate] = (countsByDate[e.receivingDate] || 0) + 1;
+                    });
+
+                    const rowClass = (vIdx === 0 ? 'item-group-start ' : '') + (vIdx === spanCount - 1 ? 'item-group-end' : '');
+                    bodyHTML += `<tr class="${rowClass.trim()}">`;
+                    if(vIdx === 0) {
+                        bodyHTML += `<td class="merged-sno-cell" rowspan="${spanCount}">${sNo++}</td>`;
+                        bodyHTML += `<td class="merged-item-cell" rowspan="${spanCount}">${itemName}</td>`;
+                    }
+                    bodyHTML += `<td class="vendor-cell">${vendorName}</td>`;
+                    activeDates.forEach(d => {
+                        const avgRate = countsByDate[d] ? (ratesByDate[d] / countsByDate[d]) : null;
+                        bodyHTML += `<td class="rate-cell ${avgRate ? 'has-val' : ''}">${avgRate ? '₹' + avgRate.toFixed(2) : ''}</td>`;
+                    });
+                    bodyHTML += `</tr>`;
+                });
+            });
+
+            tbodyEl.innerHTML = bodyHTML;
+        }
+
+        // RECEIVING TABLE POPULATE (WITH BILL THUMBNAIL)
+        function populateReceivingTable() {
+            const q = (document.getElementById('recvListSearch').value || '').trim().toLowerCase();
+            const filtered = q
+                ? receivingEntries.filter(e =>
+                    e.itemName.toLowerCase().includes(q) ||
+                    (e.supplierName && e.supplierName.toLowerCase().includes(q)) ||
+                    (e.invoiceNo && e.invoiceNo.toLowerCase().includes(q)) ||
+                    e.receivingDate.includes(q)
+                  )
+                : receivingEntries;
+
+            let tbody = '';
+            filtered.slice(0, 400).forEach((e, idx) => {
+                const hasPhoto = e.billPhoto && e.billPhoto.length > 100;
+                const photoHtml = hasPhoto 
+                    ? `<img src="${e.billPhoto}" class="bill-thumb" title="Click to view Bill" onclick="viewBillPhoto('${e.billPhoto}', '${e.invoiceNo}', '${e.supplierName}')">`
+                    : '<span style="font-size:0.7rem; color:#94a3b8;">No Photo</span>';
+
+                tbody += `<tr>
+                    <td style="text-align:center;">${photoHtml}</td>
+                    <td style="text-align:center;">
+                        <button class="btn btn-warning btn-sm" title="Edit" onclick="editReceivingEntry(${e.id})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-danger btn-sm" title="Delete" onclick="deleteReceivingEntry(${e.id})"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                    <td>${idx + 1}</td>
+                    <td><b>${e.receivingDate}</b></td>
+                    <td>${e.invoiceNo}</td>
+                    <td style="font-weight:700; color:var(--primary);">${e.itemName}</td>
+                    <td style="text-align:right; font-weight:700;">${e.quantity}</td>
+                    <td style="text-align:right; color:var(--success); font-weight:700;">${e.rate ? '₹' + Number(e.rate).toFixed(2) : '-'}</td>
+                    <td>${e.supplierName}</td>
+                </tr>`;
+            });
+            document.getElementById('recvTableBody').innerHTML = tbody;
+        }
+
+        // MASTER ITEM TABLE POPULATE
+        function populateMasterItemTable() {
+            const q = (document.getElementById('masterListSearch').value || '').trim().toLowerCase();
+            const filtered = q
+                ? masterItems.filter(it => it.name.toLowerCase().includes(q) || (it.hsn && it.hsn.toLowerCase().includes(q)))
+                : masterItems;
+
+            let tbody = '';
+            filtered.slice(0, 500).forEach((it, idx) => {
+                const safeName = it.name.replace(/'/g, "\'");
+                tbody += `<tr>
+                    <td style="text-align:center;">
+                        <button class="btn btn-warning btn-sm" title="Edit" onclick="editMasterItem('${safeName}')"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-danger btn-sm" title="Delete" onclick="deleteMasterItem('${safeName}')"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                    <td>${idx + 1}</td>
+                    <td style="font-weight:700;">${it.name}</td>
+                    <td>${it.hsn || '-'}</td>
+                    <td><span style="background:#e2e8f0; padding:2px 8px; border-radius:4px; font-weight:600; font-size:0.78rem;">${it.uom}</span></td>
+                </tr>`;
+            });
+            document.getElementById('itemTableBody').innerHTML = tbody;
+        }
+
+        // SYSTEM USERS TABLE POPULATE
+        function populateSystemUsersTable() {
+            let tbody = '';
+            systemUsers.forEach((u, idx) => {
+                tbody += `<tr>
+                    <td style="text-align:center;">
+                        ${u.username !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteSystemUser(${u.id})"><i class="fa-solid fa-trash"></i></button>` : '<span style="font-size:0.75rem; color:#64748b;">Protected</span>'}
+                    </td>
+                    <td>${idx + 1}</td>
+                    <td style="font-weight:700;">${u.username}</td>
+                    <td><span style="background:#dbeafe; color:#1e40af; padding:3px 8px; border-radius:4px; font-size:0.78rem; font-weight:700;">${u.role}</span></td>
+                    <td><span style="color:var(--success); font-weight:700;">${u.status}</span></td>
+                </tr>`;
+            });
+            document.getElementById('systemUsersTableBody').innerHTML = tbody;
+        }
+
+        // SAVE / EDIT / DELETE RECEIVING WITH BILL PHOTO
+        function saveReceiving(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editEntryId').value;
+            const receivingDate = document.getElementById('rDate').value;
+            const invoiceDate = document.getElementById('rInvDate').value || receivingDate.split('-').reverse().join('-');
+            const invoiceNo = document.getElementById('rInv').value.trim();
+            const itemName = document.getElementById('rItem').value;
+            const quantity = parseFloat(document.getElementById('rQty').value) || 0;
+            const rate = parseFloat(document.getElementById('rRate').value) || 0;
+            const supplierName = document.getElementById('rSupp').value.trim() || 'Unknown Vendor';
+            
+            const billPhotoInput = document.getElementById('rBillPhoto');
+            
+            function processSave(photoBase64) {
+                if(editId) {
+                    const ent = receivingEntries.find(x => x.id == editId);
+                    if(ent) {
+                        ent.receivingDate = receivingDate;
+                        ent.invoiceDate = invoiceDate;
+                        ent.invoiceNo = invoiceNo;
+                        ent.itemName = itemName;
+                        ent.quantity = quantity;
+                        ent.rate = rate;
+                        ent.supplierName = supplierName;
+                        if(photoBase64) ent.billPhoto = photoBase64;
+                    }
+                    alert('✅ रिसीविंग एंट्री और बिल फोटो क्लाउड पर अपडेट हो गए!');
+                    cancelReceivingEdit();
+                } else {
+                    const newId = receivingEntries.length > 0 ? Math.max(...receivingEntries.map(x => x.id || 0)) + 1 : 1;
+                    receivingEntries.unshift({
+                        id: newId, receivingDate, invoiceDate, invoiceNo, itemName, quantity, rate, supplierName,
+                        billPhoto: photoBase64 || ''
+                    });
+                    alert('✅ नई रिसीविंग एंट्री और बिल फोटो क्लाउड पर सेव हो गए!');
+                    document.getElementById('recvForm').reset();
+                    document.getElementById('rDate').value = new Date().toISOString().substring(0,10);
+                }
+
+                saveToStorage();
+                updateKPIs();
+                populateItemDropdowns();
+                populateReceivingTable();
+                renderDateReport();
+                renderRateReport();
+            }
+
+            if(billPhotoInput.files && billPhotoInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    processSave(evt.target.result);
+                };
+                reader.readAsDataURL(billPhotoInput.files[0]);
+            } else {
+                let existingPhoto = '';
+                if(editId) {
+                    const ent = receivingEntries.find(x => x.id == editId);
+                    if(ent) existingPhoto = ent.billPhoto || '';
+                }
+                processSave(existingPhoto);
+            }
+        }
+
+        function editReceivingEntry(id) {
+            const ent = receivingEntries.find(x => x.id == id);
+            if(!ent) return;
+            closeModal();
+            switchTab('receiving', document.getElementById('nav-receiving'));
+
+            document.getElementById('editEntryId').value = ent.id;
+            document.getElementById('rDate').value = ent.receivingDate;
+            document.getElementById('rInvDate').value = ent.invoiceDate || '';
+            document.getElementById('rInv').value = ent.invoiceNo;
+            document.getElementById('rItem').value = ent.itemName;
+            document.getElementById('rQty').value = ent.quantity;
+            document.getElementById('rRate').value = ent.rate || '';
+            document.getElementById('rSupp').value = ent.supplierName;
+
+            document.getElementById('recvFormTitle').innerHTML = '<i class="fa-solid fa-pen-to-square" style="color:var(--warning);"></i> एंट्री सुधारें व बिल फोटो अपडेट करें (Entry #' + ent.id + ')';
+            document.getElementById('recvSubmitBtn').innerHTML = '<i class="fa-solid fa-rotate"></i> अपडेट करें';
+            document.getElementById('cancelRecvEditBtn').style.display = 'inline-flex';
+            document.querySelector('.content-body').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelReceivingEdit() {
+            document.getElementById('editEntryId').value = '';
+            document.getElementById('recvForm').reset();
+            document.getElementById('rDate').value = new Date().toISOString().substring(0,10);
+            document.getElementById('recvFormTitle').innerHTML = '<i class="fa-solid fa-cart-flatbed"></i> सिंगल रिसीविंग एंट्री दर्ज करें + बिल फोटो अपलोड';
+            document.getElementById('recvSubmitBtn').innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> क्लाउड पर सेव करें';
+            document.getElementById('cancelRecvEditBtn').style.display = 'none';
+        }
+
+        function deleteReceivingEntry(id) {
+            if(confirm('क्या आप इस एंट्री को डिलीट करना चाहते हैं?')) {
+                receivingEntries = receivingEntries.filter(x => x.id != id);
+                saveToStorage();
+                updateKPIs();
+                populateReceivingTable();
+                renderDateReport();
+                renderRateReport();
+                if(document.getElementById('infoModal').style.display === 'flex') showAllEntriesModal();
+            }
+        }
+
+        // MASTER ITEM SAVE / EDIT / DELETE
+        function saveMasterItem(e) {
+            e.preventDefault();
+            const originalName = document.getElementById('editItemOriginalName').value;
+            const name = document.getElementById('mName').value.trim();
+            const hsn = document.getElementById('mHsn').value.trim();
+            const uom = document.getElementById('mUom').value.trim();
+
+            if(originalName) {
+                const it = masterItems.find(x => x.name === originalName);
+                if(it) { it.name = name; it.hsn = hsn; it.uom = uom; }
+                if(originalName !== name) {
+                    receivingEntries.forEach(en => { if(en.itemName === originalName) en.itemName = name; });
+                }
+                alert('✅ आइटम मास्टर अपडेट हो गया!');
+                cancelItemEdit();
+            } else {
+                if(masterItems.some(x => x.name.toLowerCase() === name.toLowerCase())) {
+                    alert('⚠ यह आइटम पहले से मौजूद है!');
+                    return;
+                }
+                masterItems.unshift({ name, hsn, uom });
+                alert('✅ नया आइटम जोड़ दिया गया!');
+                document.getElementById('mName').value = '';
+                document.getElementById('mHsn').value = '';
+            }
+
+            saveToStorage();
+            initAllViews();
+        }
+
+        function editMasterItem(name) {
+            const it = masterItems.find(x => x.name === name);
+            if(!it) return;
+            closeModal();
+            switchTab('itemAdd', document.getElementById('nav-itemAdd'));
+
+            document.getElementById('editItemOriginalName').value = it.name;
+            document.getElementById('mName').value = it.name;
+            document.getElementById('mHsn').value = it.hsn;
+            document.getElementById('mUom').value = it.uom;
+
+            document.getElementById('itemFormTitle').innerHTML = '<i class="fa-solid fa-pen-to-square" style="color:var(--warning);"></i> आइटम एडिट करें: ' + it.name;
+            document.getElementById('itemSubmitBtn').innerHTML = '<i class="fa-solid fa-rotate"></i> अपडेट करें';
+            document.getElementById('cancelItemEditBtn').style.display = 'inline-flex';
+            document.querySelector('.content-body').scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelItemEdit() {
+            document.getElementById('editItemOriginalName').value = '';
+            document.getElementById('mName').value = '';
+            document.getElementById('mHsn').value = '';
+            document.getElementById('mUom').value = 'Kg';
+            document.getElementById('itemFormTitle').innerHTML = '<i class="fa-solid fa-plus-circle"></i> नया आइटम मास्टर जोड़ें';
+            document.getElementById('itemSubmitBtn').innerHTML = '<i class="fa-solid fa-check"></i> सेव करें';
+            document.getElementById('cancelItemEditBtn').style.display = 'none';
+        }
+
+        function deleteMasterItem(name) {
+            if(confirm('क्या आप "' + name + '" को डिलीट करना चाहते हैं?')) {
+                masterItems = masterItems.filter(x => x.name !== name);
+                dwSelectedSet.delete(name);
+                rrSelectedSet.delete(name);
+                saveToStorage();
+                initAllViews();
+                if(document.getElementById('infoModal').style.display === 'flex') showAllItemsModal();
+            }
+        }
+
+        // SYSTEM USERS
+        function saveNewSystemUser(e) {
+            e.preventDefault();
+            const username = document.getElementById('newSysUser').value.trim();
+            const password = document.getElementById('newSysPass').value.trim();
+            const role = document.getElementById('newSysRole').value;
+
+            if(systemUsers.some(u => u.username === username)) {
+                alert('⚠ यह यूज़र्नाम पहले से मौजूद है!');
+                return;
+            }
+            const newId = systemUsers.length > 0 ? Math.max(...systemUsers.map(x => x.id || 0)) + 1 : 1;
+            systemUsers.push({ id: newId, username, password, role, status: 'Active' });
+            saveToStorage();
+            populateSystemUsersTable();
+            alert('✅ नया यूज़र जोड़ दिया गया!');
+            document.getElementById('newSysUser').value = '';
+            document.getElementById('newSysPass').value = '';
+        }
+
+        function deleteSystemUser(id) {
+            if(confirm('क्या आप इस यूज़र को हटाना चाहते हैं?')) {
+                systemUsers = systemUsers.filter(u => u.id !== id);
+                saveToStorage();
+                populateSystemUsersTable();
+            }
+        }
+
+        // OTP RECOVERY
+        let generatedOtp = '123456';
+        function openForgotModal() {
+            document.getElementById('otpStep1').style.display = 'block';
+            document.getElementById('otpStep2').style.display = 'none';
+            document.getElementById('otpStep3').style.display = 'none';
+            document.getElementById('forgotModal').style.display = 'flex';
+        }
+        function closeForgotModal() {
+            document.getElementById('forgotModal').style.display = 'none';
+        }
+        function sendOtpCode() {
+            const mob = document.getElementById('recoveryMobile').value.trim();
+            if(mob.length < 10) { alert('सही मोबाइल नंबर दर्ज करें!'); return; }
+            generatedOtp = String(Math.floor(100000 + Math.random() * 900000));
+            document.getElementById('displayOtpCode').textContent = generatedOtp;
+            document.getElementById('otpStep1').style.display = 'none';
+            document.getElementById('otpStep2').style.display = 'block';
+        }
+        function verifyOtpCode() {
+            const entered = document.getElementById('enteredOtp').value.trim();
+            if(entered === generatedOtp) {
+                document.getElementById('otpStep2').style.display = 'none';
+                document.getElementById('otpStep3').style.display = 'block';
+            } else {
+                alert('❌ गलत OTP!');
+            }
+        }
+        function saveNewPassword() {
+            const newPass = document.getElementById('newSetPass').value.trim();
+            if(newPass.length < 3) { alert('पासवर्ड बहुत छोटा है!'); return; }
+            let adminUsr = systemUsers.find(u => u.username === 'admin');
+            if(adminUsr) adminUsr.password = newPass;
+            saveToStorage();
+            alert('✅ पासवर्ड सफलतापर्वक बदल गया है!');
+            closeForgotModal();
+        }
+
+        // MODALS
+        let currentModalMode = '';
+        function showAllItemsModal() {
+            currentModalMode = 'items';
+            document.getElementById('modalSearchInput').value = '';
+            document.getElementById('modalTitle').innerText = 'Total Master Items (' + masterItems.length.toLocaleString() + ')';
+            document.getElementById('modalHead').innerHTML = '<tr><th style="width:100px; text-align:center;">Action</th><th>S.No.</th><th>Item Name</th><th>HSN / Code</th><th>UOM</th></tr>';
+            renderModalContent('');
+            document.getElementById('modalExcelBtn').onclick = exportMasterItemsToExcel;
+            document.getElementById('infoModal').style.display = 'flex';
+        }
+        function showAllEntriesModal() {
+            currentModalMode = 'entries';
+            document.getElementById('modalSearchInput').value = '';
+            document.getElementById('modalTitle').innerText = 'All Receiving Entries (' + receivingEntries.length.toLocaleString() + ')';
+            document.getElementById('modalHead').innerHTML = '<tr><th style="width:85px;">Bill</th><th style="width:100px; text-align:center;">Action</th><th>S.No.</th><th>Date</th><th>Inv No.</th><th>Item</th><th style="text-align:right;">Qty</th><th>Rate</th><th>Vendor</th></tr>';
+            renderModalContent('');
+            document.getElementById('modalExcelBtn').onclick = exportFullReceivingToExcel;
+            document.getElementById('infoModal').style.display = 'flex';
+        }
+        function filterModalTable() {
+            renderModalContent((document.getElementById('modalSearchInput').value || '').trim().toLowerCase());
+        }
+        function renderModalContent(q) {
+            let body = '';
+            if(currentModalMode === 'items') {
+                const list = q ? masterItems.filter(it => it.name.toLowerCase().includes(q) || (it.hsn && it.hsn.toLowerCase().includes(q))) : masterItems;
+                list.slice(0, 600).forEach((it, idx) => {
+                    const safeName = it.name.replace(/'/g, "\'");
+                    body += `<tr>
+                        <td style="text-align:center;"><button class="btn btn-warning btn-sm" onclick="editMasterItem('${safeName}')"><i class="fa-solid fa-pen"></i></button><button class="btn btn-danger btn-sm" onclick="deleteMasterItem('${safeName}')"><i class="fa-solid fa-trash"></i></button></td>
+                        <td>${idx+1}</td><td style="font-weight:700;">${it.name}</td><td>${it.hsn || '-'}</td><td>${it.uom}</td>
+                    </tr>`;
+                });
+            } else {
+                const list = q ? receivingEntries.filter(e => e.itemName.toLowerCase().includes(q) || (e.supplierName && e.supplierName.toLowerCase().includes(q))) : receivingEntries;
+                list.slice(0, 600).forEach((e, idx) => {
+                    const hasPhoto = e.billPhoto && e.billPhoto.length > 100;
+                    const photoHtml = hasPhoto ? `<img src="${e.billPhoto}" class="bill-thumb" onclick="viewBillPhoto('${e.billPhoto}', '${e.invoiceNo}', '${e.supplierName}')">` : '-';
+                    body += `<tr>
+                        <td style="text-align:center;">${photoHtml}</td>
+                        <td style="text-align:center;"><button class="btn btn-warning btn-sm" onclick="editReceivingEntry(${e.id})"><i class="fa-solid fa-pen"></i></button><button class="btn btn-danger btn-sm" onclick="deleteReceivingEntry(${e.id})"><i class="fa-solid fa-trash"></i></button></td>
+                        <td>${idx+1}</td><td>${e.receivingDate}</td><td>${e.invoiceNo}</td><td style="font-weight:700;">${e.itemName}</td><td style="text-align:right; font-weight:700;">${e.quantity}</td><td>${e.rate || '-'}</td><td>${e.supplierName}</td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('modalBody').innerHTML = body;
+        }
+        function closeModal() { document.getElementById('infoModal').style.display = 'none'; }
+
+        // EXCEL EXPORTS
+        function exportReportToExcel(tableId, filename) {
+            const table = document.getElementById(tableId);
+            const wb = XLSX.utils.table_to_book(table, { sheet: "Report" });
+            XLSX.writeFile(wb, filename);
+        }
+        function exportMasterItemsToExcel() {
+            const wsData = [["S.No.", "Item Name", "HSN / Code", "UOM"]];
+            masterItems.forEach((it, idx) => wsData.push([idx + 1, it.name, it.hsn, it.uom]));
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Master_Items");
+            XLSX.writeFile(wb, "Master_Items_Full_List.xlsx");
+        }
+        function exportFullReceivingToExcel() {
+            const wsData = [["S.No.", "Receiving Date", "Invoice Date", "Invoice No.", "Item Name", "Quantity", "Rate", "Supplier Name"]];
+            receivingEntries.forEach((e, idx) => wsData.push([idx + 1, e.receivingDate, e.invoiceDate, e.invoiceNo, e.itemName, e.quantity, e.rate || "", e.supplierName]));
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Item_Receiving");
+            XLSX.writeFile(wb, "All_Item_Receiving_Entries.xlsx");
+        }
+
+        // AUTH & TABS
         function handleLogin(e) {
             e.preventDefault();
-            const u = document.getElementById('loginUser').value.trim();
-            const p = document.getElementById('loginPass').value.trim();
-            const err = document.getElementById('errorMsg');
-
-            if (u === 'admin' && p === 'admin123') {
-                localStorage.setItem('erp_logged', 'true');
+            const usr = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPass').value.trim();
+            let found = systemUsers.find(u => u.username === usr && u.password === pass);
+            if(found) {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('appContainer').style.display = 'flex';
-                initApp();
+                document.getElementById('rDate').value = new Date().toISOString().substring(0,10);
+                initAllViews();
             } else {
-                err.style.display = 'block';
-                err.textContent = 'गलत यूज़रनेम या पासवर्ड! (Use admin / admin123)';
+                document.getElementById('errorMsg').style.display = 'block';
             }
         }
-
         function handleLogout() {
-            localStorage.removeItem('erp_logged');
             document.getElementById('appContainer').style.display = 'none';
             document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('loginPass').value = '';
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if(element) element.classList.add('active');
+
+            const titles = {
+                'dashboard': 'Dashboard Overview',
+                'receiving': 'Item Receiving Entry & Bill Photo Vault',
+                'dateReport': 'Receiving Report (Vendor-wise Merged & Quantity View)',
+                'rateReport': 'Rate Fluctuation Report',
+                'itemAdd': 'Item Master Management',
+                'adminUsers': 'Admin & User Manager'
+            };
+            document.getElementById('pageTitle').innerText = titles[tabId] || 'Dashboard';
+            if(tabId === 'dateReport') renderDateReport();
+            if(tabId === 'rateReport') renderRateReport();
+            if(tabId === 'adminUsers') populateSystemUsersTable();
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('erp_logged') === 'true') {
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('appContainer').style.display = 'flex';
-                initApp();
-            }
-        });
-
-        function switchTab(tabId, el) {
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.sidebar-menu li').forEach(l => l.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
-            if(el) el.classList.add('active');
-            document.getElementById('pageTitle').textContent = tabId.charAt(0).toUpperCase() + tabId.slice(1);
-        }
-
-        function initApp() {
-            renderDash();
-            renderRecent();
-            renderReceiving();
-            renderVendor();
-            renderFrequency();
-            renderMaster();
-        }
-
-        function renderDash() {
-            const tbody = document.getElementById('dashTableBody');
-            tbody.innerHTML = '';
-            receivingEntries.slice(-15).reverse().forEach(r => {
-                tbody.innerHTML += `<tr><td>${r.receivedDate}</td><td>${r.invoiceDate}</td><td style="font-weight:700; color:#b45309;">${r.invoiceNo}</td><td>${r.vendor}</td><td>${r.itemName}</td><td style="text-align:right; font-weight:700; color:#15803d;">${r.qty.toLocaleString()}</td></tr>`;
-            });
-        }
-
-        function renderRecent() {
-            const tbody = document.getElementById('recentTableBody');
-            tbody.innerHTML = '';
-            receivingEntries.slice(-100).reverse().forEach(r => {
-                tbody.innerHTML += `<tr><td>${r.receivedDate}</td><td>${r.invoiceDate}</td><td style="font-weight:700; color:#b45309;">${r.invoiceNo}</td><td>${r.vendor}</td><td>${r.itemName}</td><td style="text-align:right; font-weight:700; color:#15803d;">${r.qty.toLocaleString()}</td></tr>`;
-            });
-        }
-
-        function renderReceiving() {
-            const tbody = document.getElementById('receivingTableBody');
-            tbody.innerHTML = '';
-            receivingEntries.forEach(r => {
-                tbody.innerHTML += `<tr><td>${r.receivedDate}</td><td>${r.invoiceDate}</td><td style="font-weight:700; color:#b45309;">${r.invoiceNo}</td><td>${r.vendor}</td><td>${r.itemName}</td><td style="text-align:right; font-weight:700; color:#15803d;">${r.qty.toLocaleString()}</td></tr>`;
-            });
-        }
-
-        function renderVendor() {
-            const tbody = document.getElementById('vendorTableBody');
-            tbody.innerHTML = '';
-            let vMap = {};
-            receivingEntries.forEach(r => {
-                if(!vMap[r.vendor]) vMap[r.vendor] = { invoices: 0, qty: 0 };
-                vMap[r.vendor].invoices += 1;
-                vMap[r.vendor].qty += r.qty;
-            });
-            for(let v in vMap) {
-                tbody.innerHTML += `<tr><td style="font-weight:700;">${v}</td><td style="text-align:center;">${vMap[v].invoices}</td><td style="text-align:right; font-weight:700; color:#15803d;">${vMap[v].qty.toLocaleString()}</td></tr>`;
-            }
-        }
-
-        function renderFrequency() {
-            const tbody = document.getElementById('frequencyTableBody');
-            tbody.innerHTML = '';
-            let fMap = {};
-            receivingEntries.forEach(r => {
-                if(!fMap[r.itemName]) fMap[r.itemName] = { times: 0, qty: 0 };
-                fMap[r.itemName].times += 1;
-                fMap[r.itemName].qty += r.qty;
-            });
-            for(let item in fMap) {
-                tbody.innerHTML += `<tr><td style="font-weight:600;">${item}</td><td style="text-align:center;">${fMap[item].times}</td><td style="text-align:right; font-weight:700; color:#15803d;">${fMap[item].qty.toLocaleString()}</td></tr>`;
-            }
-        }
-
-        function renderMaster() {
-            const tbody = document.getElementById('masterTableBody');
-            tbody.innerHTML = '';
-            masterItems.forEach(m => {
-                tbody.innerHTML += `<tr><td>${m.code}</td><td style="font-weight:600;">${m.name}</td><td>${m.category}</td><td>${m.unit}</td></tr>`;
-            });
-        }
-
-        function exportReceivingExcel() {
-            const ws = XLSX.utils.json_to_sheet(receivingEntries);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Receiving");
-            XLSX.writeFile(wb, "Receiving_Data.xlsx");
-        }
-
-        function exportVendorExcel() {
-            let vArr = [];
-            let vMap = {};
-            receivingEntries.forEach(r => {
-                if(!vMap[r.vendor]) vMap[r.vendor] = { invoices: 0, qty: 0 };
-                vMap[r.vendor].invoices += 1;
-                vMap[r.vendor].qty += r.qty;
-            });
-            for(let v in vMap) vArr.push({ Vendor: v, Invoices: vMap[v].invoices, TotalQty: vMap[v].qty });
-            const ws = XLSX.utils.json_to_sheet(vArr);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Vendor Details");
-            XLSX.writeFile(wb, "Vendor_Quantity_Details.xlsx");
+        function initAllViews() {
+            updateKPIs();
+            populateItemDropdowns();
+            populateMasterItemTable();
+            populateReceivingTable();
+            populateSystemUsersTable();
+            renderDwItemPicker();
+            renderRrItemPicker();
+            renderDateReport();
+            renderRateReport();
         }
     </script>
 </body>
